@@ -13,14 +13,17 @@ fourthChoice: .asciiz "4- Print Average test value\n"
 fivthChoice: .asciiz "5- Update an existing test result\n"
 sixthChoice: .asciiz "6- Delete a test\n"
 seventhChoice: .asciiz "7- Exit!\n"
-
-enteredS: .asciiz "\nPARSING STARTED\n"
-convertingS: .asciiz "\nConversing STARTED\n"
-
 pickChoice: .asciiz "Select an option: " 
 
 inputFile: .asciiz "medical_records.txt"
 inputBuffer: .space 1024
+
+enteredS: .asciiz "\nPARSING STARTED\n"
+convertingS: .asciiz "\nConversing STARTED\n"
+
+testName: .space 32
+testDate: .space 32
+testRes: .space 32
 
 
 temp: .asciiz "temp\ttemp\ttemp\n"
@@ -51,11 +54,15 @@ la	$a0, inputBuffer
 li	$v0, 4
 syscall
 
-la $t0, inputBuffer     # Pointer to the beginning of the buffer
-la $t1, inputBuffer    # Pointer to iterate through the buffer
-la $t4, inputBuffer    # Pointer to iterate through the buffer
 
-j parse_loop
+# START PARSING 
+# t1 => ID , $t9 => name.address, $t8 => date.address, $t7 => result.address
+la $t9, testName
+la $t8, testDate
+la $t7, testRes
+la $t0, inputBuffer      # Load address of buffer into $t0
+li $t1, 0           # Initialize register for address
+j parse_ID
 
 
 
@@ -152,76 +159,92 @@ syscall
 j MENU
 
 #############################
-parse_loop:
-    # Load a byte from the buffer
-    lb $t2, 0($t1) 
+# Parse the line
     
-    # Check if the current character is a newline or we reached the end of the buffer
-    la $a0, temp1
-    li $v0, 4 # Print String
-    syscall
-	
-    move $a0, $t2
-    li $v0, 11 # Print Integer
-    syscall
-    
-    beqz $t2, EXIT    # Exit if end of file reached
-    beq $t2, '\n', NextLine   # End parsing if newline character is found
-    
-    sub $t2, $t2, 0 
-    # Check if the current character is a colon (':'), indicating the start of patientId
-    
-    beq $t2, ':', parse_patientId
-    
-    # Move to the next character in the buffer
-    addi $t1, $t1, 1
-    j parse_loop
+parse_ID:
+    lb $t2, 0($t0)      # Load byte from buffer into $t2
+    beq $t2, ':', found_ID_end  # If colon (':') is found, exit loop
+    sub $t2, $t2, '0'   # Convert ASCII to integer
+    mul $t1, $t1, 10    # Multiply address by 10
+    add $t1, $t1, $t2   # Add digit to address
+    addi $t0, $t0, 1    # Move to next character in buffer
+    j parse_ID     # Repeat until colon is found
 
-NextLine:
-	addi $t1, $t1, 1
-	move $t4, $t1
-	j parse_loop
-
-parse_patientId:
-    # Process patientId here
-    addi $t1, $t1, 1
-    li $t3, 0          # Initialize patientId to 0
+found_ID_end:
+    addi $t0, $t0, 2    # Move past colon and space
+    j parse_Name
     
+parse_Name:
+	lb $t2, 0($t0)      # Load byte from buffer into $t2
+	beq $t2, ',', found_name_end  # If comma (',') is found, exit loop
+	sb $t2, 0($t9)
+	addi $t9, $t9, 1
+	addi $t0, $t0, 1
+	j parse_Name
+          
+found_name_end:
+	addi $t0, $t0, 2    # Move past comma and space
+    j parse_Date
     
-    loop_patientId:
-        lb $t5, 0($t4)  # Load a byte from the buffer
-        
-        beq $t5, ':', PRINTID
-        
-        # Convert character to integer and update patientId
-        sub $t5, $t5, '0'   # Convert ASCII to integer
-        mul $t3, $t3, 10    # Shift current patientId to the left by one digit
-        add $t3, $t3, $t5   # Add current digit to patientId
-	
-        # Move to the next character in the buffer
-        addi $t4, $t4, 1
-        j loop_patientId
-        
-        
-PRINTID:
+parse_Date:
+	lb $t2, 0($t0)      # Load byte from buffer into $t2
+	beq $t2, ',', found_Date_end  # If comma (',') is found, exit loop
+	sb $t2, 0($t8)
+	addi $t8, $t8, 1
+	addi $t0, $t0, 1
+	j parse_Date
+      
+found_Date_end:
+	addi $t0, $t0, 2    # Move past comma and space
+    j parse_Res
+    
+parse_Res:
+	lb $t2, 0($t0)      # Load byte from buffer into $t2
+	beq $t2, $zero, EXIT # If end of file
+	beq $t2, '\n', newLine  # If new Line
+	sb $t2, 0($t7)
+	addi $t7, $t7, 1
+	addi $t0, $t0, 1
+	j parse_Res
+		
+newLine:
+	addi $t0, $t0, 1    # Move past new Line
+	li $t1, 0 # i did this just to check and this to reset ID again
+	j parse_ID
+            
+EXIT:
 
 	la $a0, temp1
 	li $v0, 4 # Print String
 	syscall
-	
-	move $a0, $t3
+
+	move $a0, $t1
 	li $v0, 1 # Print Integer
 	syscall
 	
-	la $a0, temp
-	li $v0, 4 # Print String
-	syscall
-	la $a0, temp
+	la $a0, temp1
 	li $v0, 4 # Print String
 	syscall
 	
-	j parse_loop
-        
-EXIT:
-li $v0, 10 # Exit program
-syscall
+	la $a0, testName
+	li $v0, 4 # Print String
+	syscall
+	
+	la $a0, temp1
+	li $v0, 4 # Print String
+	syscall
+	
+	la $a0, testDate
+	li $v0, 4 # Print String
+	syscall
+	
+	la $a0, temp1
+	li $v0, 4 # Print String
+	syscall
+	
+	la $a0, testRes
+	li $v0, 4 # Print String
+	syscall
+
+	li $v0, 10 # Exit program
+	syscall
