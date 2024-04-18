@@ -53,6 +53,7 @@ syscall
 
 la $t0, inputBuffer     # Pointer to the beginning of the buffer
 la $t1, inputBuffer    # Pointer to iterate through the buffer
+la $t4, inputBuffer    # Pointer to iterate through the buffer
 
 j parse_loop
 
@@ -153,22 +154,22 @@ j MENU
 #############################
 parse_loop:
     # Load a byte from the buffer
-    lb $t2, 0($t1)
+    lb $t2, 0($t1) 
     
     # Check if the current character is a newline or we reached the end of the buffer
+    la $a0, temp1
+    li $v0, 4 # Print String
+    syscall
+	
+    move $a0, $t2
+    li $v0, 11 # Print Integer
+    syscall
     
-    # beq $t2, '\n', end_parse   # End parsing if newline character is found
-    # beq $t0, $a2, EXIT    # End parsing if end of buffer is reached
+    beqz $t2, EXIT    # Exit if end of file reached
+    beq $t2, '\n', NextLine   # End parsing if newline character is found
+    
     sub $t2, $t2, 0 
     # Check if the current character is a colon (':'), indicating the start of patientId
-    
-    #la $a0, temp1
-    #li $v0, 4 # Print String
-    #syscall
-    
-    #li $v0, 11         # syscall code for printing a character
-    #move $a0, $t2      # load $t2 into argument register $a0
-    #syscall            # print the content of $t2 as a character
     
     beq $t2, ':', parse_patientId
     
@@ -176,41 +177,29 @@ parse_loop:
     addi $t1, $t1, 1
     j parse_loop
 
+NextLine:
+	addi $t1, $t1, 1
+	move $t4, $t1
+	j parse_loop
 
 parse_patientId:
     # Process patientId here
-    
-    la $a0, enteredS
-    li $v0, 4 # Print String
-    syscall
-    
+    addi $t1, $t1, 1
     li $t3, 0          # Initialize patientId to 0
-    move $t4, $t0 ## SHOULD BE MODIFIED
+    
     
     loop_patientId:
         lb $t5, 0($t4)  # Load a byte from the buffer
         
-        la $a0, temp1
-    	li $v0, 4 # Print String
-    	syscall
-    
-   	li $v0, 11         # syscall code for printing a character
-    	move $a0, $t2      # load $t2 into argument register $a0
-   	syscall            # print the content of $t2 as a character
-        
-        la $a0, convertingS
-    	li $v0, 4 # Print String
-    	syscall
-    	
-    	beq $t5, ':', EXIT
+        beq $t5, ':', PRINTID
         
         # Convert character to integer and update patientId
-        sub $t5, $t5, 0   # Convert ASCII to integer
+        sub $t5, $t5, '0'   # Convert ASCII to integer
         mul $t3, $t3, 10    # Shift current patientId to the left by one digit
         add $t3, $t3, $t5   # Add current digit to patientId
-        
+	
         # Move to the next character in the buffer
-        addi $t5, $t5, 1
+        addi $t4, $t4, 1
         j loop_patientId
         
         
@@ -223,6 +212,15 @@ PRINTID:
 	move $a0, $t3
 	li $v0, 1 # Print Integer
 	syscall
+	
+	la $a0, temp
+	li $v0, 4 # Print String
+	syscall
+	la $a0, temp
+	li $v0, 4 # Print String
+	syscall
+	
+	j parse_loop
         
 EXIT:
 li $v0, 10 # Exit program
