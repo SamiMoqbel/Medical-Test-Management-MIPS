@@ -21,13 +21,18 @@ inputBuffer: .space 1024
 enteredS: .asciiz "\nPARSING STARTED\n"
 convertingS: .asciiz "\nConversing STARTED\n"
 
-testName: .space 32
-testDate: .space 32
-testRes: .space 32
+.align 2
+patient_info: .space 120       # Array to store patients information 
+
+testName: .space 8
+testDate: .space 8
+testRes: .space 8
 
 
 temp: .asciiz "temp\ttemp\ttemp\n"
 temp1: .asciiz "\n=============================\n"
+split:.asciiz "|"
+temp2: .asciiz "\n-----------------------------------\n"
 #. . .
 ################# Code segment #####################
 .text
@@ -62,6 +67,7 @@ la $t8, testDate
 la $t7, testRes
 la $t0, inputBuffer      # Load address of buffer into $t0
 li $t1, 0           # Initialize register for address
+la $t4, patient_info        # Load base address of patient information
 j parse_ID
 
 
@@ -171,8 +177,26 @@ parse_ID:
     j parse_ID     # Repeat until colon is found
 
 found_ID_end:
-    addi $t0, $t0, 2    # Move past colon and space
-    j parse_Name
+	addi $t0, $t0, 2    # Move past colon and space
+	
+	#lw $t3, patient_count            # Load number of patients
+	#mul $t3, $t3, 4                  # Calculate offset for the new patient
+	#add $t4, $t4, $t3                # Calculate address for the new patient
+	
+	move $a0,$t1
+	sw $a0, 0($t4)                    # Store patient ID
+	
+	la $a0, temp2
+	li $v0, 4 # Print String
+	syscall
+	
+	#print id
+	lw $t5, ($t4)  
+	move $a0, $t5  
+	li $v0, 1       
+	syscall     
+	
+	j parse_Name
     
 parse_Name:
 	lb $t2, 0($t0)      # Load byte from buffer into $t2
@@ -184,7 +208,27 @@ parse_Name:
           
 found_name_end:
 	addi $t0, $t0, 2    # Move past comma and space
-    j parse_Date
+	
+	# Store name address
+	la $a0, testName
+	sw $a0, 4($t4)                   # Store name address (4 bytes offset from patient ID)
+	
+	#li $a0,0
+	#sw $a0, testName
+	la $t9, testName
+	
+	la $a0, split
+	li $v0, 4 # Print String
+	syscall
+	
+	# Load name address into $a0
+	lw $a0, 4($t4)                   # Load the address of testName from memory into $a0
+	# Load the string from the address
+	li $v0, 4                        # Print string syscall
+	syscall
+	
+	
+	j parse_Date
     
 parse_Date:
 	lb $t2, 0($t0)      # Load byte from buffer into $t2
@@ -196,55 +240,74 @@ parse_Date:
       
 found_Date_end:
 	addi $t0, $t0, 2    # Move past comma and space
-    j parse_Res
+	#Store date address
+	la $a0, testDate                    # load date address to $a0
+	sw $a0, 8($t4)                   # Store date address (8 bytes offset from patient ID)
+	
+	li $a0,0
+	la $t8, testDate
+	
+	la $a0, split
+	li $v0, 4 # Print String
+	syscall
+	
+	# Load date address into $a0
+	lw $a0, 8($t4)                   # Load the address of testName from memory into $a0
+
+	# Load the string from the address
+	li $v0, 4                        # Print string syscall
+	syscall
+	
+	
+	j parse_Res
+	
     
 parse_Res:
 	lb $t2, 0($t0)      # Load byte from buffer into $t2
-	beq $t2, $zero, EXIT # If end of file
-	beq $t2, '\n', newLine  # If new Line
+
+	
+	beq $t2, $zero, found_Res_end # If end of file
+	beq $t2, '\n',found_Res_end   # If new Line
 	sb $t2, 0($t7)
 	addi $t7, $t7, 1
 	addi $t0, $t0, 1
 	j parse_Res
 		
+found_Res_end:
+
+	#Store date address
+	la $a0, testRes                    # load date address to $a0
+	sw $a0, 12($t4)                   # Store date address (8 bytes offset from patient ID)
+	
+	li $a0,0
+	la $t7, testRes
+	
+	la $a0, split
+	li $v0, 4 # Print String
+	syscall
+	
+	# Load date address into $a0
+	lw $a0, 12($t4)                   # Load the address of testName from memory into $a0
+
+	# Load the string from the address
+	li $v0, 4                        # Print string syscall
+	syscall
+	
+	beq $t2, $zero, EXIT # If end of file
+	beq $t2, '\n',newLine  # If new Line
+	
+	
 newLine:
+	addi $t4,$t4,16
 	addi $t0, $t0, 1    # Move past new Line
 	li $t1, 0 # i did this just to check and this to reset ID again
 	j parse_ID
             
 EXIT:
-
-	la $a0, temp1
-	li $v0, 4 # Print String
-	syscall
-
-	move $a0, $t1
-	li $v0, 1 # Print Integer
+	la $t4, patient_info             # Load base address of patient information
+	lw $a0, 4($t4)                   # Load the address of testName from memory into $a0
+	li $v0, 4                       # Print string syscall
 	syscall
 	
-	la $a0, temp1
-	li $v0, 4 # Print String
-	syscall
-	
-	la $a0, testName
-	li $v0, 4 # Print String
-	syscall
-	
-	la $a0, temp1
-	li $v0, 4 # Print String
-	syscall
-	
-	la $a0, testDate
-	li $v0, 4 # Print String
-	syscall
-	
-	la $a0, temp1
-	li $v0, 4 # Print String
-	syscall
-	
-	la $a0, testRes
-	li $v0, 4 # Print String
-	syscall
-
 	li $v0, 10 # Exit program
 	syscall
