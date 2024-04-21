@@ -61,16 +61,11 @@ la	$a0, inputBuffer
 li	$v0, 4
 syscall
 
-
+j READ_FILE
 # START PARSING 
-# t1 => ID , $t9 => name.address, $t8 => date.address, $t7 => result.address
-la $t9, testName
-la $t8, testDate
-la $t7, testRes
-la $t0, inputBuffer      # Load address of buffer into $t0
-li $t1, 0           # Initialize register for address
-la $t4, patient_info        # Load base address of patient information
-j parse_ID
+# t1 => ID , $t5 => name.address, $t6 => date.address, $t7 => result.address
+
+
 
 
 
@@ -168,7 +163,12 @@ j MENU
 
 #############################
 # Parse the line
-    
+READ_FILE:
+	la $t0, inputBuffer      # Load address of buffer into $t0
+	li $t1, 0           # Initialize register for address
+	la $t4, patient_info        # Load base address of patient information
+	j parse_ID
+	
 parse_ID:
     lb $t2, 0($t0)      # Load byte from buffer into $t2
     beq $t2, ':', found_ID_end  # If colon (':') is found, exit loop
