@@ -27,6 +27,8 @@ patient_info: .space 120       # Array to store patients information
 testName: .space 8
 testDate: .space 8
 testRes: .space 8
+temp_buffer:
+    .space 256           # Allocate space for temporary buffer (adjust size as needed)
 
 
 temp: .asciiz "temp\ttemp\ttemp\n"
@@ -179,10 +181,6 @@ parse_ID:
 found_ID_end:
 	addi $t0, $t0, 2    # Move past colon and space
 	
-	#lw $t3, patient_count            # Load number of patients
-	#mul $t3, $t3, 4                  # Calculate offset for the new patient
-	#add $t4, $t4, $t3                # Calculate address for the new patient
-	
 	move $a0,$t1
 	sw $a0, 0($t4)                    # Store patient ID
 	
@@ -195,7 +193,16 @@ found_ID_end:
 	move $a0, $t5  
 	li $v0, 1       
 	syscall     
+	li $t3, 0
 	
+	# Allocate memory for the name
+    li $v0, 9            # syscall 9 - sbrk (allocate memory)
+    li $a0, 8            # Allocate 8 bytes for the name (adjust size as needed)
+    syscall              # Allocate memory, address returned in $v0
+    
+    move $t9, $v0
+    move $t5, $v0
+    
 	j parse_Name
     
 parse_Name:
@@ -209,14 +216,8 @@ parse_Name:
 found_name_end:
 	addi $t0, $t0, 2    # Move past comma and space
 	
-	# Store name address
-	la $a0, testName
-	sw $a0, 4($t4)                   # Store name address (4 bytes offset from patient ID)
-	
-	#li $a0,0
-	#sw $a0, testName
-	la $t9, testName
-	
+	sw $t5, 4($t4)                   # Store name address (4 bytes offset from patient ID)+
+
 	la $a0, split
 	li $v0, 4 # Print String
 	syscall
@@ -227,25 +228,28 @@ found_name_end:
 	li $v0, 4                        # Print string syscall
 	syscall
 	
+	# Allocate memory for the name
+    li $v0, 9            # syscall 9 - sbrk (allocate memory)
+    li $a0, 8            # Allocate 8 bytes for the name (adjust size as needed)
+    syscall              # Allocate memory, address returned in $v0
+    
+    move $t9, $v0
+    move $t6, $v0
 	
 	j parse_Date
     
 parse_Date:
 	lb $t2, 0($t0)      # Load byte from buffer into $t2
 	beq $t2, ',', found_Date_end  # If comma (',') is found, exit loop
-	sb $t2, 0($t8)
-	addi $t8, $t8, 1
+	sb $t2, 0($t9)
+	addi $t9, $t9, 1
 	addi $t0, $t0, 1
 	j parse_Date
       
 found_Date_end:
 	addi $t0, $t0, 2    # Move past comma and space
-	#Store date address
-	la $a0, testDate                    # load date address to $a0
-	sw $a0, 8($t4)                   # Store date address (8 bytes offset from patient ID)
 	
-	li $a0,0
-	la $t8, testDate
+	sw $t6, 8($t4)                   # Store name address (4 bytes offset from patient ID)+
 	
 	la $a0, split
 	li $v0, 4 # Print String
@@ -258,6 +262,13 @@ found_Date_end:
 	li $v0, 4                        # Print string syscall
 	syscall
 	
+	# Allocate memory for the name
+    li $v0, 9            # syscall 9 - sbrk (allocate memory)
+    li $a0, 8            # Allocate 8 bytes for the name (adjust size as needed)
+    syscall              # Allocate memory, address returned in $v0
+    
+    move $t9, $v0
+    move $t7, $v0
 	
 	j parse_Res
 	
@@ -268,19 +279,14 @@ parse_Res:
 	
 	beq $t2, $zero, found_Res_end # If end of file
 	beq $t2, '\n',found_Res_end   # If new Line
-	sb $t2, 0($t7)
-	addi $t7, $t7, 1
+	sb $t2, 0($t9)
+	addi $t9, $t9, 1
 	addi $t0, $t0, 1
 	j parse_Res
 		
 found_Res_end:
 
-	#Store date address
-	la $a0, testRes                    # load date address to $a0
-	sw $a0, 12($t4)                   # Store date address (8 bytes offset from patient ID)
-	
-	li $a0,0
-	la $t7, testRes
+	sw $t7, 12($t4)                   # Store name address (4 bytes offset from patient ID)
 	
 	la $a0, split
 	li $v0, 4 # Print String
@@ -293,7 +299,7 @@ found_Res_end:
 	li $v0, 4                        # Print string syscall
 	syscall
 	
-	beq $t2, $zero, EXIT # If end of file
+	beq $t2, $zero, MENU # If end of file
 	beq $t2, '\n',newLine  # If new Line
 	
 	
@@ -304,8 +310,12 @@ newLine:
 	j parse_ID
             
 EXIT:
+	la $a0, temp1
+	li $v0, 4 # Print String
+	syscall
+
 	la $t4, patient_info             # Load base address of patient information
-	lw $a0, 4($t4)                   # Load the address of testName from memory into $a0
+	lw $a0, 60($t4)                   # Load the address of testName from memory into $a0
 	li $v0, 4                       # Print string syscall
 	syscall
 	

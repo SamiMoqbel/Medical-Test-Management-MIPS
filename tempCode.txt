@@ -1,0 +1,32 @@
+parse_Name:
+	lb $t2, 0($t0)      # Load byte from buffer into $t2
+	beq $t2, ',', found_name_end  # If comma (',') is found, exit loop
+	
+	sb $t2, 0($t9)
+	addi $t9, $t9, 1
+	addi $t0, $t0, 1
+	j parse_Name
+          
+found_name_end:
+	addi $t0, $t0, 2    # Move past comma and space
+	
+	# Store name address
+	la $a0, testName
+	sw $a0, 4($t4)                   # Store name address (4 bytes offset from patient ID)+
+	
+	#li $a0,0
+	#sw $a0, testName
+	la $t9, testName
+	
+	la $a0, split
+	li $v0, 4 # Print String
+	syscall
+	
+	# Load name address into $a0
+	lw $a0, 4($t4)                   # Load the address of testName from memory into $a0
+	# Load the string from the address
+	li $v0, 4                        # Print string syscall
+	syscall
+	
+	
+	j parse_Date
