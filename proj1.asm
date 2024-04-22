@@ -24,9 +24,7 @@ convertingS: .asciiz "\nConversing STARTED\n"
 .align 2
 patient_info: .space 120       # Array to store patients information 
 
-testName: .space 8
-testDate: .space 8
-testRes: .space 8
+
 temp_buffer:
     .space 256           # Allocate space for temporary buffer (adjust size as needed)
 
@@ -34,7 +32,22 @@ temp_buffer:
 temp: .asciiz "temp\ttemp\ttemp\n"
 temp1: .asciiz "\n=============================\n"
 split:.asciiz "|"
+comma:.asciiz ","
+colon:.asciiz ":"
+newLineSym:.asciiz "\n"
 temp2: .asciiz "\n-----------------------------------\n"
+
+ID_prompt: .asciiz "\nEnter patient ID: "
+name_prompt: .asciiz "\nEnter test name: "
+date_prompt: .asciiz "\nEnter test Date: "
+result_prompt: .asciiz "\nEnter test Result: "
+success_prompt: .asciiz "\nTest added successfully!\n"
+
+line_buffer: .space 50
+
+testName: .space 4
+testDate: .space 8
+testRes: .space 8
 #. . .
 ################# Code segment #####################
 .text
@@ -126,10 +139,58 @@ j MENU
 
 
 ADD: #add new test
-la $a0, temp
-li $v0, 4 # Print String
-syscall
-j MENU
+	la $a0, temp1
+	li $v0, 4 # Print String
+	syscall
+
+# Prompt the user for test information
+
+    # Prompt for patient ID
+    la $a0, ID_prompt
+    li $v0, 4   # Print String
+    syscall
+    li $v0, 5   # Read Integer
+    syscall
+    move $t1, $v0  # Store patient ID
+
+    # Prompt for test name
+    la $a0, name_prompt
+    li $v0, 4   # Print String
+    syscall
+    la $a0, testName
+    li $a1, 4  # Max length of test name
+    li $v0, 8   # Read String
+    syscall
+    
+    # Prompt for test date
+    la $a0, date_prompt
+    li $v0, 4   # Print String
+    syscall
+    la $a0, testDate
+    li $a1, 8  # Max length of test date
+    li $v0, 8   # Read String
+    syscall
+
+    # Prompt for test result
+    la $a0, result_prompt
+    li $v0, 4   # Print String
+    syscall
+    la $a0, testRes
+    li $a1, 8  # Max length of test result
+    li $v0, 8   # Read String
+    syscall
+    
+    # Display confirmation message
+    la $a0, success_prompt
+    li $v0, 4   # Print String
+    syscall
+
+	j MENU
+
+	 
+	
+	 
+	
 
 UPDATE:
 la $a0, temp1
@@ -299,8 +360,16 @@ found_Res_end:
 	li $v0, 4                        # Print string syscall
 	syscall
 	
-	beq $t2, $zero, MENU # If end of file
+	beq $t2, $zero, close_file # If end of file
 	beq $t2, '\n',newLine  # If new Line
+	
+close_file:
+	# Close the file
+	li $v0, 16       # syscall for close
+	move $a0, $s0    # file descriptor
+	syscall          # close the file
+	
+	j MENU
 	
 	
 newLine:
