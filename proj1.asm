@@ -59,11 +59,15 @@ success_prompt: .asciiz "\nTest added successfully!\n"
 
 ID_search:.asciiz "\nEnter patient ID: "
 
+data: .space 120   
+
 line_buffer: .space 50
 
 testName: .space 4
 testDate: .space 8
 testRes: .space 8
+
+
 #. . .
 ################# Code segment #####################
 .text
@@ -154,6 +158,8 @@ beq $t0, 7, EXIT
 j MENU
 
 
+#---------------------#
+
 ADD: #add new test
 	la $a0, temp1
 	li $v0, 4 # Print String
@@ -229,6 +235,10 @@ addPatient:
     syscall
 
 	j MENU
+
+
+#---------------------#
+
 
 UPDATE:
 
@@ -352,12 +362,44 @@ updateRes:
 	
 	j MENU
 
+
+#---------------------#
     
 DELETE:
-la $a0, temp1
-li $v0, 4 # Print String
-syscall
-j MENU
+	la $a0, ID_search
+	li $v0, 4   # Print String
+	syscall
+	li $v0, 5   # Read Integer
+	syscall
+	move $s1, $v0   # Store the entered ID in $s1
+
+	# Load the record counter
+	lw $t8, record_counter
+
+	# Loop through stored records to find the matching ID
+	la $t4, patient_info # Load base address of patient information
+	
+	li $t5, 0 # Initialize counter for number of records
+
+delete_loop:
+	lw $t6, ($t4) # Load current ID from patient_info
+	beq $t6, $s1, delete_id # If ID matches, jump to found_id
+	addi $t4, $t4, 16   # Move to next record
+	addi $t5, $t5, 1     # Increment counter
+	blt $t5, $t8, delete_loop # If not reached total records, continue searching
+
+    
+	j MENU             # Return to menu
+
+delete_id:
+	
+	li $t1, 0
+	sw $t1, 0($t4)
+    
+	addi $t4, $t4, 16   
+	j delete_loop
+	
+#---------------------#
 
 PRINT:
 la $a0, temp1
@@ -617,14 +659,7 @@ newLine:
 	j parse_ID
             
 EXIT:
-	la $a0, temp1
-	li $v0, 4 # Print String
-	syscall
 
-	la $t4, patient_info             # Load base address of patient information
-	lw $a0, 60($t4)                   # Load the address of testName from memory into $a0
-	li $v0, 4                       # Print string syscall
-	syscall
-	
-	li $v0, 10 # Exit program
-	syscall
+    # Exit program
+    li $v0, 10        # syscall 10 (exit)
+    syscall           # Call syscall

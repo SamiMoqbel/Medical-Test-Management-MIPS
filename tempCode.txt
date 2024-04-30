@@ -1,31 +1,44 @@
-move $a0, $t1
-    li $v0, 1   # Print Integer
-    syscall
+1300511: LDL, 2024-01, 110
+1300500: RBC, 2024-02, 13.5
+1300522: ABC, 2024-03, 110
+1300533: HGL, 2024-04, 13.5
+1300511: BBC, 2024-01, 110
+1300533: CCC, 2024-04, 13.5
+
+# Open the file for writing
+    li $v0, 13        # syscall 13 (open file)
+    la $a0, inputFile  # Load address of filename
+    li $a1, 1         # Open for writing (O_WRONLY)
+    li $a2, 0         # File permissions (not used for writing)
+    syscall           # Call syscall
+
+    move $s0, $v0     # Save file descriptor
     
-    la $a0, split
-    li $v0, 4   # Print String
-    syscall
-    
-    la $a0, testName
-    li $v0, 4   # Print String
-    syscall
-    
-    la $a0, split
-    li $v0, 4   # Print String
-    syscall
-    
-    la $a0, testDate
-    li $v0, 4   # Print String
-    syscall
-    
-    la $a0, split
-    li $v0, 4   # Print String
-    syscall
-    
-    la $a0, testRes
-    li $v0, 4   # Print String
+    la $t0, patient_info
+	la $t1, data
+
+formatData:
+	
+	lw $t2, ($t0)
+	sw $t2, 0($t1)
+	
+	move $a0, $t2  
+	li $v0, 1       
+	syscall
+	
+	lw $a0, data  
+	li $v0, 1       
+	syscall
+	
+	
+writeToFile:
+
+    li $a0, 8          # load integer
+    li $v0, 15               # syscall code for write integer to file
+    move $a1, $s0            # file handle
     syscall
 
-	la $a0, temp1
-	li $v0, 4 # Print String
-	syscall
+    # Close the file
+    li $v0, 16        # syscall 16 (close file)
+    move $a0, $s0     # File descriptor
+    syscall           # Call syscall
