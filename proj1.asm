@@ -482,14 +482,49 @@ found_id:
 	j search_loop
 
 SEARCH_T:
-la $a0, temp1
-li $v0, 4 # Print String
-syscall
-# Read the patient ID entered by the user
-li $v0, 5 # Read Integer
-syscall
-move $s1, $v0 # Store the entered ID in $s1
-j MENU
+	la $t4, patient_info # Load base address of patient information
+    lw $a0, 4($t4)          # Load the address of the string into $a0
+
+#Split the string by the decimal point
+    jal splitString       # Jump to splitString subroutine
+
+    # Print the integer part
+    move $a0, $t0         # Load the integer part into $a0
+    li $v0, 1             # Load the system call code for printing an integer (1)
+    syscall               # Perform the system call
+
+    # Print the decimal part
+    move $a0, $t1         # Load the decimal part into $a0
+    li $v0, 1             # Load the system call code for printing an integer (1)
+    syscall               # Perform the system call
+
+#Subroutine to split the string by the decimal point
+splitString:
+    li $t2, 0             # Initialize index to 0
+    li $t0, 0             # Initialize $t0 to store integer part
+    li $t1, 0             # Initialize $t1 to store decimal part
+
+split_loop:
+    lb $t3, 0($a0)        # Load the byte at the current index
+    beq $t3, '.', end_split  # If the byte is '.', end the loop
+
+    # Check if the character is a digit
+    li $t5, 48            # ASCII code for '0'
+    li $t6, 57            # ASCII code for '9'
+    blt $t3, $t5, next_char
+    bgt $t3, $t6, next_char
+
+    sub $t3, $t3, '0'   # Convert ASCII to integer
+    mul $t1, $t1, 10    # Multiply address by 10
+    add $t1, $t1, $t3   # Add digit to address
+    addi $t0, $t0, 1    # Move to next character in buffer
+
+next_char:
+    addi $a0, $a0, 1      # Move to the next byte in the string
+    j split_loop          # Repeat the loop
+
+end_split:
+j EXIT
 
 #############################
 # Parse the line
